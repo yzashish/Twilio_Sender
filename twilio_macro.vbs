@@ -8,6 +8,7 @@ Public Sub SendTwilioMessages()
     Dim wsContacts As Worksheet
     Dim wsTemplates As Worksheet
     Dim wsSettings As Worksheet
+    Dim wsLog As Worksheet
 
     Dim btnSend As Object
     Dim originalButtonState As Boolean
@@ -17,6 +18,7 @@ Public Sub SendTwilioMessages()
     Set wsContacts = ThisWorkbook.Sheets("Contacts")
     Set wsTemplates = ThisWorkbook.Sheets("Templates")
     Set wsSettings = ThisWorkbook.Sheets("Settings")
+    Set wsLog = ThisWorkbook.Sheets("Log")
 
     ' Get the send button from the Dashboard to disable it
     On Error Resume Next
@@ -42,16 +44,24 @@ Public Sub SendTwilioMessages()
         GoTo Cleanup
     End If
 
-    ' --- Read Selected Template ---
+    ' --- Read Selected Template & MPS Setting ---
     Dim messageUid As String
     Dim messageTemplate As String
     Dim templateRow As Variant
+    Dim mps As Long
+    Dim messagesSentThisSecond As Long
 
     ' The user specifies the Message UID in a dedicated cell on the 'Dashboard'.
     messageUid = wsDashboard.Range("C5").Value
+    mps = wsDashboard.Range("C6").Value
 
     If messageUid = "" Then
         MsgBox "Error: Please specify a Message UID in cell C5 on the 'Dashboard' sheet.", vbCritical, "Template Error"
+        GoTo Cleanup
+    End If
+
+    If mps <= 0 Then
+        MsgBox "Error: 'Messages Per Second (MPS)' must be a positive number. Please check cell C6 on the 'Dashboard' sheet.", vbCritical, "Configuration Error"
         GoTo Cleanup
     End If
 
@@ -79,36 +89,50 @@ Public Sub SendTwilioMessages()
     ' --- Loop Through Contacts ---
     Dim lastRow As Long
     Dim i As Long
+    Dim j As Long
     Dim toName As String
     Dim toNumber As String
     Dim sendFlag As String
     Dim statusCell As Range
+    Dim logRow As Long
 
     lastRow = wsContacts.Cells(wsContacts.Rows.Count, "A").End(xlUp).Row
+    messagesSentThisSecond = 0
 
     For i = 2 To lastRow
-        toName = wsContacts.Cells(i, 1).Value
-        toNumber = wsContacts.Cells(i, 2).Value
         sendFlag = UCase(wsContacts.Cells(i, 3).Value)
-        Set statusCell = wsContacts.Cells(i, 4)
-
-        statusCell.Value = "" ' Clear previous status
 
         If sendFlag = "YES" Or sendFlag = "TRUE" Then
+            ' --- Rate Limiting ---
+            If messagesSentThisSecond >= mps Then
+                Application.Wait (Now + TimeValue("0:00:01"))
+                messagesSentThisSecond = 0
+            End If
+
+            toName = wsContacts.Cells(i, 1).Value
+            toNumber = wsContacts.Cells(i, 2).Value
+            Set statusCell = wsContacts.Cells(i, 4)
+            statusCell.Value = "" ' Clear previous status
+
             If toNumber <> "" Then
                 ' --- Prepare API Request ---
                 Dim url As String
                 Dim body As String
                 Dim finalMessage As String
+                Dim statusText As String
+                Dim responseText As String
 
-                ' Simple placeholder replacement
-                finalMessage = Replace(messageTemplate, "{{1}}", wsContacts.Cells(i, 5).Value)
-                finalMessage = Replace(finalMessage, "{{2}}", wsContacts.Cells(i, 6).Value)
-                finalMessage = Replace(finalMessage, "{{3}}", wsContacts.Cells(i, 7).Value)
-                finalMessage = Replace(finalMessage, "{{4}}", wsContacts.Cells(i, 8).Value)
+                ' --- Placeholder Replacement ---
+                finalMessage = messageTemplate
+                ' Special replacement for {{name}}
+                finalMessage = Replace(finalMessage, "{{name}}", toName)
+                ' Loop for numbered placeholders {{1}} to {{15}}
+                For j = 1 To 15
+                    finalMessage = Replace(finalMessage, "{{" & j & "}}", wsContacts.Cells(i, 4 + j).Value)
+                Next j
 
+                ' --- API Call ---
                 url = "https://api.twilio.com/2010-04-01/Accounts/" & accountSid & "/Messages.json"
-
                 body = "To=" & UrlEncode("whatsapp:" & toNumber) & _
                        "&From=" & UrlEncode("whatsapp:" & fromNumber) & _
                        "&Body=" & UrlEncode(finalMessage)
@@ -116,18 +140,31 @@ Public Sub SendTwilioMessages()
                 http.Open "POST", url, False
                 http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
                 http.setRequestHeader "Authorization", "Basic " & Base64Encode(accountSid & ":" & authToken)
-
-                ' --- Send Request ---
                 http.send body
 
-                ' --- Log Status ---
+                messagesSentThisSecond = messagesSentThisSecond + 1
+
+                ' --- Process Response ---
                 If http.Status >= 200 And http.Status < 300 Then
+                    statusText = "Success"
                     statusCell.Value = "Sent (" & http.Status & ")"
                     statusCell.Font.Color = RGB(0, 128, 0) ' Green
                 Else
-                    statusCell.Value = "Failed: " & http.Status & " - " & http.responseText
+                    statusText = "Failed"
+                    statusCell.Value = "Failed: " & http.Status
                     statusCell.Font.Color = RGB(255, 0, 0) ' Red
                 End If
+                responseText = http.responseText
+
+                ' --- Write to Log Sheet ---
+                logRow = wsLog.Cells(wsLog.Rows.Count, "A").End(xlUp).Row + 1
+                wsLog.Cells(logRow, 1).Value = Now() ' Timestamp
+                wsLog.Cells(logRow, 2).Value = toName
+                wsLog.Cells(logRow, 3).Value = toNumber
+                wsLog.Cells(logRow, 4).Value = messageUid
+                wsLog.Cells(logRow, 5).Value = statusText
+                wsLog.Cells(logRow, 6).Value = responseText
+
             Else
                 statusCell.Value = "Skipped: No number"
             End If

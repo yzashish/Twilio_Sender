@@ -18,6 +18,7 @@ def create_excel_file(filename="TwilioSender.xlsx"):
     ws_contacts = wb.create_sheet("Contacts")
     ws_templates = wb.create_sheet("Templates")
     ws_settings = wb.create_sheet("Settings")
+    ws_log = wb.create_sheet("Log")
 
     # --- Move Dashboard to the front ---
     wb.move_sheet(ws_dashboard, -len(wb.sheetnames)+1)
@@ -69,8 +70,19 @@ def create_excel_file(filename="TwilioSender.xlsx"):
     ws_dashboard['D5'] = "<- Enter the Message UID of the template you want to send."
     ws_dashboard['D5'].font = info_font
 
+    ws_dashboard['B6'] = "Messages Per Second (MPS):"
+    ws_dashboard['B6'].font = Font(bold=True)
+    ws_dashboard['B6'].alignment = Alignment(horizontal='right')
 
-    ws_dashboard['A7'] = "Button Placeholder"
+    ws_dashboard['C6'] = 1 # Default value
+    ws_dashboard['C6'].fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid") # Yellow fill
+    ws_dashboard['C6'].font = Font(bold=True)
+
+    ws_dashboard['D6'] = "<- Set your desired sending rate (e.g., 1)."
+    ws_dashboard['D6'].font = info_font
+
+
+    ws_dashboard['A8'] = "Button Placeholder"
     ws_dashboard['A7'].font = header_font
     ws_dashboard['A7'].fill = header_fill
     ws_dashboard.merge_cells('A7:D7')
@@ -82,23 +94,27 @@ def create_excel_file(filename="TwilioSender.xlsx"):
 
 
     # --- Populate Contacts Sheet ---
-    for i, width in enumerate([20, 20, 10, 30, 15, 15, 15, 15], 1):
+    # Define widths for first 4 columns, then 15 variable columns
+    widths = [20, 20, 10, 30] + [15] * 15
+    for i, width in enumerate(widths, 1):
         ws_contacts.column_dimensions[get_column_letter(i)].width = width
 
-    headers = ["Name", "WhatsApp Number", "Send?", "Status", "Variable {{1}}", "Variable {{2}}", "Variable {{3}}", "Variable {{4}}"]
+    headers = ["Name", "WhatsApp Number", "Send?", "Status"] + [f"Variable {{{{{i}}}}}" for i in range(1, 16)]
     for col_num, header in enumerate(headers, 1):
         cell = ws_contacts.cell(row=1, column=col_num, value=header)
         cell.font = header_font
         cell.fill = header_fill
 
-    # Sample data
+    # Sample data - expanded to have a few variable examples
     sample_contacts = [
-        ("Test Contact 1", "919876543210", "Yes", "", "Value1A", "Value2A", "Value3A", "Value4A"),
-        ("Test Contact 2", "14155238886", "No", "", "Value1B", "Value2B", "Value3B", "Value4B"),
+        ("Test Contact 1", "919876543210", "Yes", "", "Value1A", "Value2A", "Value3A"),
+        ("Test Contact 2", "14155238886", "No", "", "Value1B", "Value2B"),
         ("Test Contact 3", "447123456789", "Yes", "", "Value1C", "Value2C", "Value3C", "Value4C"),
     ]
     for row_data in sample_contacts:
-        ws_contacts.append(row_data)
+        # Pad each row with empty strings to match the 15 variable columns
+        padded_row = list(row_data) + [""] * (19 - len(row_data))
+        ws_contacts.append(padded_row)
 
     # Add data validation for "Send?" column
     dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
@@ -142,6 +158,21 @@ def create_excel_file(filename="TwilioSender.xlsx"):
     ws_templates.row_dimensions[2].height = 200
     ws_templates['B3'].alignment = cell_alignment
     ws_templates.row_dimensions[3].height = 30
+
+
+    # --- Populate Log Sheet ---
+    ws_log.column_dimensions['A'].width = 25
+    ws_log.column_dimensions['B'].width = 25
+    ws_log.column_dimensions['C'].width = 20
+    ws_log.column_dimensions['D'].width = 20
+    ws_log.column_dimensions['E'].width = 15
+    ws_log.column_dimensions['F'].width = 50
+
+    log_headers = ["Timestamp", "Contact Name", "Contact Number", "Message UID", "Status", "Twilio Response"]
+    for col_num, header in enumerate(log_headers, 1):
+        cell = ws_log.cell(row=1, column=col_num, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
 
 
     # --- Populate Settings Sheet ---

@@ -65,18 +65,23 @@ If you don't have a "Developer" tab in your Excel ribbon, follow these steps:
 ### Step 3.2: Add Your Contacts
 1.  Go to the **Contacts** sheet.
 2.  Enter the `Name` and `WhatsApp Number` for each recipient.
-    *   The number should include the country code but no `+` or `00` (e.g., `919876543210`).
 3.  In the `Send?` column, select "Yes" from the dropdown for each contact you want to message.
-4.  If your template uses variables like `{{1}}`, `{{2}}`, etc., fill in the corresponding `Variable` columns for each contact.
+4.  Use the columns `Variable {{1}}` through `Variable {{15}}` to hold the data you want to insert into your message templates.
 
 ### Step 3.3: Manage Your Templates
 1.  Go to the **Templates** sheet.
-2.  You can edit the sample templates or add new ones.
-3.  Make sure each template has a unique value in the **Message UID** column. This UID is how you will select the message to send.
+2.  You can edit the sample templates or add new ones. Make sure each template has a unique **Message UID**.
+3.  You can use up to 15 numbered placeholders (`{{1}}`, `{{2}}`, etc.) which will be replaced with data from the corresponding `Variable` columns in the `Contacts` sheet.
+4.  You can also use a special placeholder, `{{name}}`, which will be automatically replaced with the recipient's name from the `Name` column.
 
 ### Step 3.4: Send the Messages
 1.  Go to the **Dashboard** sheet.
-2.  In the yellow box (cell `C5`), enter the **Message UID** of the template you want to send.
-3.  Click the **Send Messages** button.
-4.  The button will be disabled and read "Sending...". Please wait until the process is complete.
-5.  A confirmation message will appear once all messages have been sent. Check the `Status` column in the `Contacts` sheet for the result of each message.
+2.  In the first yellow box (cell `C5`), enter the **Message UID** of the template you want to send.
+3.  In the second yellow box (cell `C6`), enter your desired **Messages Per Second (MPS)** rate. This controls how fast messages are sent to comply with API limits. A value of `1` is a safe starting point.
+4.  Click the **Send Messages** button.
+5.  The button will be disabled and read "Sending...". Please wait until the process is complete.
+6.  A confirmation message will appear once all messages have been sent.
+
+### Step 3.5: Check the Log
+1.  After sending, go to the **Log** sheet.
+2.  Here you will find a detailed record for every message that was attempted, including a timestamp, the contact it was sent to, the status (Success/Failed), and the full response from Twilio for debugging.

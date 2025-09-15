@@ -17,11 +17,11 @@ The architecture was chosen to avoid cross-platform issues with programmatically
 -   **Purpose**: To programmatically generate a clean, well-structured Excel file for the user.
 -   **Key Library**: `openpyxl`.
 -   **Functionality**:
-    -   Creates four worksheets: `Dashboard`, `Contacts`, `Templates`, and `Settings`.
-    -   Populates each sheet with headers, instructional text, and sample data, including a new `Message UID` column in the `Templates` sheet.
-    -   Applies styling (fonts, fills, column widths) for better readability.
-    -   Adds data validation to the `Send?` column in the `Contacts` sheet.
-    -   Protects the `Settings` sheet with the password `twilio` to prevent accidental edits, while leaving the value cells unlocked.
+    -   Creates five worksheets: `Dashboard`, `Contacts`, `Templates`, `Settings`, and `Log`.
+    -   Populates each sheet with headers, instructional text, and sample data.
+    -   The `Dashboard` includes an input for `Message UID` and `Messages Per Second (MPS)`.
+    -   The `Contacts` sheet is expanded to include 15 `Variable {{i}}` columns.
+    -   The `Log` sheet is created with headers to store a record of every message attempt.
 
 ### `twilio_macro.vbs`
 
@@ -30,23 +30,20 @@ This file contains a single VBA module with the core application logic.
 -   **Main Subroutine**: `Public Sub SendTwilioMessages()`
     -   This is the entry point for the macro, intended to be linked to a button.
     -   **Workflow**:
-        1.  Disables the send button to prevent multiple clicks.
-        2.  Reads configuration (Account SID, Auth Token, From Number) from the `Settings` sheet.
-        3.  Reads the target `Message UID` from cell `C5` on the `Dashboard`.
-        4.  Uses `Application.Match` to find the corresponding row for the UID in the `Templates` sheet (Column A).
-        5.  Retrieves the message template content from Column B of the found row.
-        6.  Initializes an `MSXML2.XMLHTTP` object for making the web request.
-        6.  Loops through all contacts in the `Contacts` sheet.
-        7.  For each contact where `Send?` is "Yes":
-            a. Replaces placeholders `{{1}}`, `{{2}}`, `{{3}}`, `{{4}}` with data from columns E-H.
-            b. Constructs the API endpoint URL and the `x-www-form-urlencoded` request body.
-            c. Encodes the `To`, `From`, and `Body` parameters using the `UrlEncode` helper function.
-            d. Sets the `Authorization` header using the `Base64Encode` helper function.
-            e. Sends the POST request synchronously.
-            f. Logs the result ("Sent" or "Failed" with an error message) in the `Status` column.
-        8.  Displays a completion message box.
-        9.  Re-enables the send button.
-    -   **Error Handling**: A general `On Error GoTo ErrorHandler` catches runtime errors and displays a descriptive message.
+        1.  Reads configuration from `Settings`, `Message UID` and `MPS` rate from the `Dashboard`.
+        2.  Finds the correct message template using `Application.Match` on the `Message UID`.
+        3.  Initializes an `MSXML2.XMLHTTP` object for making the web request.
+        4.  Loops through all contacts in the `Contacts` sheet.
+        5.  For each contact marked "Yes" to send:
+            a. **Rate-Limits:** Checks if the number of messages sent in the last second exceeds the MPS setting. If so, it pauses for 1 second using `Application.Wait`.
+            b. **Replaces Placeholders:**
+                i.  First, it replaces the special `{{name}}` placeholder with the contact's name.
+                ii. Then, it loops from 1 to 15, replacing each `{{i}}` with the corresponding variable from the `Contacts` sheet.
+            c. **Sends API Request:** Constructs the request and sends the message via the Twilio API.
+            d. **Logs Results:** Writes a new row to the `Log` sheet containing a timestamp, contact info, UID, status (Success/Failed), and the full response from Twilio.
+            e. Updates the `Status` column on the `Contacts` sheet for immediate feedback.
+        6.  Displays a completion message box and re-enables the send button.
+    -   **Error Handling**: Includes checks for invalid configuration (e.g., MPS <= 0) and API errors, in addition to general runtime error handling.
 
 -   **Helper Functions**:
     -   `Private Function UrlEncode(str As String) As String`: A simple implementation to URL-encode the request body parameters. It handles basic alphanumeric characters and encodes others.
@@ -59,9 +56,8 @@ This file contains a single VBA module with the core application logic.
 -   You can add more columns for template variables by updating the headers in the script and ensuring the VBA macro is adjusted to read from them.
 
 ### Modifying the VBA Macro
--   **Adding More Variables**: To add a `{{5}}` variable, you would:
-    1.  Add a `finalMessage = Replace(finalMessage, "{{5}}", wsContacts.Cells(i, 9).Value)` line in the contact loop (assuming the new data is in column I).
-    2.  Update the Python script to add a "Variable {{5}}" header.
-    3.  Update the user documentation to mention the new variable.
+-   **Adding More Variables**: The macro now automatically supports up to 15 variables. To use more, you would need to:
+    1.  Increase the upper bound of the `For j = 1 To 15` loop in the `SendTwilioMessages` subroutine.
+    2.  Update the Python script to add more "Variable {{i}}" headers to the `Contacts` sheet.
 -   **Changing API Endpoint**: The API URL is constructed in the `SendTwilioMessages` sub. You can modify the `url` variable if you need to use a different Twilio service or API version.
 -   **Improving Error Handling**: The current error handling is basic. You could expand it to parse the JSON response from Twilio for more specific error details (requires a VBA JSON parsing library).
