@@ -71,12 +71,12 @@ If you don't have a "Developer" tab in your Excel ribbon, follow these steps:
 
 ### Step 3.3: Manage Your Templates
 1.  Go to the **Templates** sheet.
-2.  You can edit the sample templates or add new ones in column A.
-3.  Note the cell address of the template you wish to use (e.g., `A2` for the first template).
+2.  You can edit the sample templates or add new ones.
+3.  Make sure each template has a unique value in the **Message UID** column. This UID is how you will select the message to send.
 
 ### Step 3.4: Send the Messages
 1.  Go to the **Dashboard** sheet.
-2.  In the yellow box (cell `C5`), enter the cell address of the template you want to send (e.g., `A2`).
+2.  In the yellow box (cell `C5`), enter the **Message UID** of the template you want to send.
 3.  Click the **Send Messages** button.
 4.  The button will be disabled and read "Sending...". Please wait until the process is complete.
 5.  A confirmation message will appear once all messages have been sent. Check the `Status` column in the `Contacts` sheet for the result of each message.

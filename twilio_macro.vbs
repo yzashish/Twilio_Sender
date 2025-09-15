@@ -43,28 +43,32 @@ Public Sub SendTwilioMessages()
     End If
 
     ' --- Read Selected Template ---
-    Dim templateCellAddress As String
+    Dim messageUid As String
     Dim messageTemplate As String
+    Dim templateRow As Variant
 
-    ' The user specifies the template cell address on the 'Templates' sheet in a dedicated cell on the 'Dashboard'.
-    templateCellAddress = wsDashboard.Range("C5").Value
+    ' The user specifies the Message UID in a dedicated cell on the 'Dashboard'.
+    messageUid = wsDashboard.Range("C5").Value
 
-    If templateCellAddress = "" Then
-        MsgBox "Error: Please specify the template cell address (e.g., 'A2') in cell C5 on the 'Dashboard' sheet.", vbCritical, "Template Error"
+    If messageUid = "" Then
+        MsgBox "Error: Please specify a Message UID in cell C5 on the 'Dashboard' sheet.", vbCritical, "Template Error"
         GoTo Cleanup
     End If
 
-    On Error Resume Next
-    messageTemplate = wsTemplates.Range(templateCellAddress).Value
-    If Err.Number <> 0 Then
-        MsgBox "Error: The specified template cell '" & templateCellAddress & "' is not valid on the 'Templates' sheet.", vbCritical, "Template Error"
-        On Error GoTo ErrorHandler
+    ' Find the row number of the matching UID in the Templates sheet (Column A)
+    templateRow = Application.Match(messageUid, wsTemplates.Columns(1), 0)
+
+    ' Check if a match was found
+    If IsError(templateRow) Then
+        MsgBox "Error: The Message UID '" & messageUid & "' was not found in the 'Templates' sheet.", vbCritical, "Template Error"
         GoTo Cleanup
+    Else
+        ' Get the template content from Column B of the found row
+        messageTemplate = wsTemplates.Cells(templateRow, 2).Value
     End If
-    On Error GoTo ErrorHandler
 
     If messageTemplate = "" Then
-        MsgBox "Error: The selected template cell is empty.", vbCritical, "Template Error"
+        MsgBox "Error: The found template for UID '" & messageUid & "' is empty.", vbCritical, "Template Error"
         GoTo Cleanup
     End If
 

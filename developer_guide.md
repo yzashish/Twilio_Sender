@@ -18,7 +18,7 @@ The architecture was chosen to avoid cross-platform issues with programmatically
 -   **Key Library**: `openpyxl`.
 -   **Functionality**:
     -   Creates four worksheets: `Dashboard`, `Contacts`, `Templates`, and `Settings`.
-    -   Populates each sheet with headers, instructional text, and sample data.
+    -   Populates each sheet with headers, instructional text, and sample data, including a new `Message UID` column in the `Templates` sheet.
     -   Applies styling (fonts, fills, column widths) for better readability.
     -   Adds data validation to the `Send?` column in the `Contacts` sheet.
     -   Protects the `Settings` sheet with the password `twilio` to prevent accidental edits, while leaving the value cells unlocked.
@@ -32,9 +32,10 @@ This file contains a single VBA module with the core application logic.
     -   **Workflow**:
         1.  Disables the send button to prevent multiple clicks.
         2.  Reads configuration (Account SID, Auth Token, From Number) from the `Settings` sheet.
-        3.  Reads the target template's cell address from `C5` on the `Dashboard`.
-        4.  Fetches the message template content from the `Templates` sheet.
-        5.  Initializes an `MSXML2.XMLHTTP` object for making the web request.
+        3.  Reads the target `Message UID` from cell `C5` on the `Dashboard`.
+        4.  Uses `Application.Match` to find the corresponding row for the UID in the `Templates` sheet (Column A).
+        5.  Retrieves the message template content from Column B of the found row.
+        6.  Initializes an `MSXML2.XMLHTTP` object for making the web request.
         6.  Loops through all contacts in the `Contacts` sheet.
         7.  For each contact where `Send?` is "Yes":
             a. Replaces placeholders `{{1}}`, `{{2}}`, `{{3}}`, `{{4}}` with data from columns E-H.

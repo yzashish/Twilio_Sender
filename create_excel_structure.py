@@ -48,8 +48,8 @@ def create_excel_file(filename="TwilioSender.xlsx"):
 
     instructions = """1. Go to the 'Settings' sheet and enter your Twilio Account SID, Auth Token, and 'From' number.
 2. Go to the 'Contacts' sheet and add your contacts' names and numbers. Set 'Send?' to 'Yes' for those you want to message.
-3. Go to the 'Templates' sheet to review or create your message templates. Note the cell of the template you want to use (e.g., A2).
-4. Come back to this Dashboard and enter the template's cell address into the yellow box at C5.
+3. Go to the 'Templates' sheet to define your messages. Make sure each message has a unique 'Message UID'.
+4. Come back to this Dashboard and enter the Message UID for your chosen message into the yellow box at C5.
 5. Click the 'Send Messages' button (which will be added after embedding the macro) to send the messages."""
 
     ws_dashboard['A4'] = instructions
@@ -58,15 +58,15 @@ def create_excel_file(filename="TwilioSender.xlsx"):
     ws_dashboard.merge_cells('A4:D4')
     ws_dashboard.row_dimensions[4].height = 100
 
-    ws_dashboard['B5'] = "Active Template Cell:"
+    ws_dashboard['B5'] = "Active Message UID:"
     ws_dashboard['B5'].font = Font(bold=True)
     ws_dashboard['B5'].alignment = Alignment(horizontal='right')
 
-    ws_dashboard['C5'] = "A2" # Default value
+    ws_dashboard['C5'] = "GOLD_HINDI_01" # Default value
     ws_dashboard['C5'].fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid") # Yellow fill
     ws_dashboard['C5'].font = Font(bold=True)
 
-    ws_dashboard['D5'] = "<- Enter the cell containing your desired template from the 'Templates' sheet (e.g., A2, A3)."
+    ws_dashboard['D5'] = "<- Enter the Message UID of the template you want to send."
     ws_dashboard['D5'].font = info_font
 
 
@@ -107,17 +107,18 @@ def create_excel_file(filename="TwilioSender.xlsx"):
 
 
     # --- Populate Templates Sheet ---
-    ws_templates.column_dimensions['A'].width = 80
-    ws_templates.column_dimensions['B'].width = 40
+    ws_templates.column_dimensions['A'].width = 25
+    ws_templates.column_dimensions['B'].width = 80
+    ws_templates.column_dimensions['C'].width = 40
 
-    headers = ["Template Content", "Description"]
+    headers = ["Message UID", "Template Content", "Description"]
     for col_num, header in enumerate(headers, 1):
         cell = ws_templates.cell(row=1, column=col_num, value=header)
         cell.font = header_font
         cell.fill = header_fill
 
     # Sample data
-    sample_template = """नमस्ते! 🙏
+    sample_template_1_content = """नमस्ते! 🙏
 आज का सोने का भाव:
 
 22k: {{1}}
@@ -128,15 +129,18 @@ def create_excel_file(filename="TwilioSender.xlsx"):
 सराफा बाज़ार, मेरठ शहर
 
 शुभ दिन! ✨"""
-    ws_templates['A2'] = sample_template
-    ws_templates['A2'].alignment = cell_alignment
-    ws_templates.row_dimensions[2].height = 200
-    ws_templates['B2'] = "Gold Price Template (Hindi)"
-    ws_templates['B2'].alignment = cell_alignment
+    sample_template_1 = ("GOLD_HINDI_01", sample_template_1_content, "Gold Price Template (Hindi)")
 
-    ws_templates['A3'] = "Hello {{1}}! This is a test message from the Twilio Excel Sender."
-    ws_templates['A3'].alignment = cell_alignment
-    ws_templates['B3'] = "Simple English Greeting"
+    sample_template_2_content = "Hello {{1}}! This is a test message from the Twilio Excel Sender."
+    sample_template_2 = ("GREETING_ENG_01", sample_template_2_content, "Simple English Greeting")
+
+    for row_data in [sample_template_1, sample_template_2]:
+        ws_templates.append(row_data)
+
+    # Apply alignment to multi-line cells
+    ws_templates['B2'].alignment = cell_alignment
+    ws_templates.row_dimensions[2].height = 200
+    ws_templates['B3'].alignment = cell_alignment
     ws_templates.row_dimensions[3].height = 30
 
 
