@@ -132,7 +132,7 @@
 						"Messages.json"
 					]
 				},
-				"description": "## Create a POST Request to Twilio API to Send a WhatsApp Message\n\n### Request URL\n\n`https://api.twilio.com/2010-04-01/Accounts/AC8797c7dcb5e53520fc6cf6ed07f42eb0/Messages.json`\n\n### Method\n\n`POST`\n\n### Request Body Parameters\n\n- **name** (text): Add your name in the body.\n    \n\nThis request submits JSON data to the Twilio API to send a WhatsApp message. A successful POST request typically returns a `200 OK` or `201 Created` response code.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+				"description": "## Create a POST Request to Twilio API to Send a WhatsApp Message\n\n### Request URL\n\n`https://api.twilio.com/2010-04-01/Accounts/ACXXXXX/Messages.json`\n\n### Method\n\n`POST`\n\n### Request Body Parameters\n\n- **name** (text): Add your name in the body.\n    \n\nThis request submits JSON data to the Twilio API to send a WhatsApp message. A successful POST request typically returns a `200 OK` or `201 Created` response code.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
 			},
 			"response": []
 		},
@@ -223,7 +223,7 @@
 						"Messages.json"
 					]
 				},
-				"description": "## Create a POST Request to Twilio API to Send a WhatsApp Message\n\n### Request URL\n\n`https://api.twilio.com/2010-04-01/Accounts/AC8797c7dcb5e53520fc6cf6ed07f42eb0/Messages.json`\n\n### Method\n\n`POST`\n\n### Request Body Parameters\n\n- **name** (text): Add your name in the body.\n    \n\nThis request submits JSON data to the Twilio API to send a WhatsApp message. A successful POST request typically returns a `200 OK` or `201 Created` response code.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+				"description": "## Create a POST Request to Twilio API to Send a WhatsApp Message\n\n### Request URL\n\n`https://api.twilio.com/2010-04-01/Accounts/ACXXXXX/Messages.json`\n\n### Method\n\n`POST`\n\n### Request Body Parameters\n\n- **name** (text): Add your name in the body.\n    \n\nThis request submits JSON data to the Twilio API to send a WhatsApp message. A successful POST request typically returns a `200 OK` or `201 Created` response code.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
 			},
 			"response": []
 		},
