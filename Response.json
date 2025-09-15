@@ -1,0 +1,24 @@
+{
+    "account_sid": "ACXXXXX",
+    "api_version": "2010-04-01",
+    "body": "Hello Manish Jain,\nWe are excited to inform you that at KK Enterprises, we currently have unutilized production capacity.\nThis means your work will be prioritized, and mould delivery will be assured within 2 weeks!\nSpecial Offer: Brake Mould Design\nRegular Price: ₹95000 | Your Discount: 15%\nOffer valid from 14 Sept 2025 to 18 Sept 2025.\nVisit us or connect today and benefit from this opportunity.\nKK Enterprises\nPlot 123, Industrial Area, Delhi\nHave a great day! 😊\n(Attached: KK_enter.png)",
+    "date_created": "Mon, 15 Sep 2025 09:31:39 +0000",
+    "date_sent": null,
+    "date_updated": "Mon, 15 Sep 2025 09:31:39 +0000",
+    "direction": "outbound-api",
+    "error_code": null,
+    "error_message": null,
+    "from": "whatsapp:+15558896991",
+    "messaging_service_sid": null,
+    "num_media": "1",
+    "num_segments": "1",
+    "price": null,
+    "price_unit": null,
+    "sid": "MMXXXXX",
+    "status": "queued",
+    "subresource_uris": {
+        "media": "/2010-04-01/Accounts/ACXXXXX/Messages/MMXXXXX/Media.json"
+    },
+    "to": "whatsapp:+919820759604",
+    "uri": "/2010-04-01/Accounts/ACXXXXX/Messages/MMXXXXX.json"
+}
