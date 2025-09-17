@@ -53,6 +53,8 @@ The magic is that you can **use Contact Variables inside Base Variables**.
 2.  For each pre-approved Twilio template you want to use:
     *   **Message UID:** Give it a short, memorable name (e.g., `PROMO_01`).
     *   **ContentSid:** Paste the official Template SID from your Twilio account (e.g., `HX...`).
+    *   **Description / Template Content:** Use these columns for your own reference to remember what each template is for. **Editing these columns will not change the message that is sent.**
+    *   **Sample Final Content:** This column provides a helpful preview of what your message will look like after the Base Variables are filled in.
     *   **Base Variable {{1}} - {{15}}:** Fill in the values for the placeholders in your Twilio template.
         *   **Example:** If Base Variable `{{2}}` is for a greeting, you could enter `Hello {{name}}! Check out this offer.` Here, `{{name}}` is a placeholder that will be filled in from the `Contacts` sheet.
 

@@ -86,18 +86,44 @@ def create_excel_file(filename="TwilioSender.xlsx"):
         ws_contacts.append(padded_row)
 
     # --- Populate Templates Sheet ---
-    template_headers = ["Message UID", "ContentSid"] + [f"Base Variable {{{{{i}}}}}" for i in range(1, 16)]
+    template_headers = [
+        "Message UID", "ContentSid", "Description", "Template Content (Reference Only)", "Sample Final Content (Preview)"
+    ] + [f"Base Variable {{{{{i}}}}}" for i in range(1, 16)]
     ws_templates.append(template_headers)
     for cell in ws_templates[1]:
         cell.font = header_font
         cell.fill = header_fill
 
-    sample_templates = [
-        ("PROMO_01", "HXed1028a89b9e341576ac8dd83207d268", "{{contact_var_1}}", "{{contact_var_2}}", "{{contact_var_3}}", "{{contact_var_4}}", "{{contact_var_5}}", "{{contact_var_6}}", "{{contact_var_7}}", "{{contact_var_8}}", "{{contact_var_9}}")
-    ]
-    for row_data in sample_templates:
-        padded_row = list(row_data) + [""] * (len(template_headers) - len(row_data))
-        ws_templates.append(padded_row)
+    # Define sample template data
+    promo_uid = "PROMO_01"
+    promo_sid = "HXed1028a89b9e341576ac8dd83207d268"
+    promo_desc = "Promotional offer for unutilized production capacity."
+    promo_content = "Special Offer: {{1}}\nRegular Price: ₹{{2}} | Your Discount: {{3}}%\nOffer valid from {{4}} to {{5}}.\nVisit us or connect today.\n{{6}}\n{{7}}\n(Attached: {{8}})"
+
+    # Define the base variables for the sample template
+    promo_base_vars = {
+        1: "{{contact_var_1}}",
+        2: "{{contact_var_2}}",
+        3: "{{contact_var_3}}",
+        4: "{{contact_var_4}}",
+        5: "{{contact_var_5}}",
+        6: "{{contact_var_6}}",
+        7: "{{contact_var_7}}",
+        8: "{{contact_var_8}}",
+    }
+
+    # Generate the sample final content preview
+    sample_final_content = promo_content
+    for i in range(1, 16):
+        if i in promo_base_vars:
+            sample_final_content = sample_final_content.replace(f"{{{{{i}}}}}", promo_base_vars[i])
+
+    # Construct the full row for the sample template
+    sample_template_row = [promo_uid, promo_sid, promo_desc, promo_content, sample_final_content]
+    for i in range(1, 16):
+        sample_template_row.append(promo_base_vars.get(i, ""))
+
+    ws_templates.append(sample_template_row)
 
     # --- Populate Log Sheet ---
     log_headers = ["Timestamp", "Contact Name", "Contact Number", "Message UID", "Status", "Twilio Response"]

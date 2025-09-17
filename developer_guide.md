@@ -16,7 +16,7 @@ This tool facilitates sending bulk, templated WhatsApp messages from Excel using
 - **Key Functionality**:
     - Creates five worksheets: `Dashboard`, `Contacts`, `Templates`, `Log`, and `Settings`.
     - **`Contacts` Sheet**: Contains columns for `Name`, `WhatsApp Number`, `Send?`, `Status`, and 15 `Contact Variable {{i}}` columns for personalization.
-    - **`Templates` Sheet**: Contains columns for `Message UID`, `ContentSid`, and 15 `Base Variable {{i}}` columns. This sheet maps a user-friendly UID to a Twilio `ContentSid` and defines the static part of the message variables.
+    - **`Templates` Sheet**: Contains columns for `Message UID`, `ContentSid`, and 15 `Base Variable {{i}}` columns. This sheet maps a user-friendly UID to a Twilio `ContentSid` and defines the static part of the message variables. It also includes several columns for reference only (`Description`, `Template Content`, `Sample Final Content`) which are populated by the Python script but not used by the VBA macro.
 
 ### `twilio_macro.vbs`
 This script contains the main application logic and several helper functions.
