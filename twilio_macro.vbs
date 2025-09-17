@@ -1,5 +1,5 @@
 ' VBA Macro for sending Twilio WhatsApp Messages (Hybrid-Variable Version)
-
+' Version   : 2.0
 '---------------------------------------------------------------------------------------
 ' Procedure : SendTwilioMessages
 ' Author    : Jules

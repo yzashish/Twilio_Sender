@@ -1,4 +1,5 @@
 # User Guide: Twilio WhatsApp Messenger
+*Version 2.0*
 
 ## 1. Introduction
 

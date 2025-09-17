@@ -34,7 +34,12 @@ def create_excel_file(filename="TwilioSender.xlsx"):
 
     ws_dashboard['A1'] = "Twilio WhatsApp Messenger"
     ws_dashboard['A1'].font = title_font
-    ws_dashboard.merge_cells('A1:D1')
+
+    ws_dashboard['D1'] = "Version 2.0"
+    ws_dashboard['D1'].font = info_font
+    ws_dashboard['D1'].alignment = Alignment(horizontal='right')
+
+    ws_dashboard.merge_cells('A1:C1')
 
     ws_dashboard['A3'] = "How to Use"
     ws_dashboard['A3'].font = header_font
