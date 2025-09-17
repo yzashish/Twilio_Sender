@@ -1,5 +1,5 @@
 # Developer Guide: Twilio WhatsApp Messenger
-*Version 2.0*
+*Version 2.6 (Final)*
 
 ## 1. Architecture Overview
 

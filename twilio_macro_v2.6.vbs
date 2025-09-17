@@ -1,5 +1,5 @@
 ' VBA Macro for sending Twilio WhatsApp Messages (Hybrid-Variable Version)
-' Version   : 2.0
+' Version   : 2.6 (Final)
 '---------------------------------------------------------------------------------------
 ' Procedure : SendTwilioMessages
 ' Author    : Jules
@@ -16,7 +16,7 @@ Public Sub SendTwilioMessages()
 50    Dim messageUid As String, contentSid As String, mps As Long
 60    Dim templateRow As Variant, baseVariables(1 To 15) As String
 70    Dim http As Object
-80    Dim lastRow As Long, i As Long, j As Long
+80    Dim lastRow As Long, i As Long, j As Long, k As Long
 90    Dim messagesSentThisSecond As Long
 
     ' --- Configuration ---
@@ -42,122 +42,133 @@ Public Sub SendTwilioMessages()
 250   fromNumber = wsSettings.Range("B4").Value
 260   messageUid = wsDashboard.Range("C5").Value
 
-270   If Not IsNumeric(wsDashboard.Range("C6").Value) Then
-280       MsgBox "Error: 'Messages Per Second (MPS)' must be a valid number.", vbCritical, "Config Error"
-290       GoTo Cleanup
-300   End If
-310   mps = wsDashboard.Range("C6").Value
+270   Dim mpsValue As Variant
+280   mpsValue = wsDashboard.Range("C6").Value
+290   If Not IsNumeric(mpsValue) Then
+300       MsgBox "Error: 'Messages Per Second (MPS)' must be a valid number.", vbCritical, "Config Error"
+310       GoTo Cleanup
+320   End If
+330   mps = CLng(mpsValue)
 
     ' --- Input Validation ---
-320   If accountSid = "" Or authToken = "" Or fromNumber = "" Or messageUid = "" Or mps <= 0 Then
-330       MsgBox "Error: Please ensure all settings and inputs on the Dashboard and Settings sheets are filled in correctly.", vbCritical, "Config Error"
-340       GoTo Cleanup
-350   End If
+340   If accountSid = "" Or authToken = "" Or fromNumber = "" Or messageUid = "" Or mps <= 0 Then
+350       MsgBox "Error: Please ensure all settings and inputs on the Dashboard and Settings sheets are filled in correctly.", vbCritical, "Config Error"
+360       GoTo Cleanup
+370   End If
 
     ' --- Find Template and Get Base Variables ---
-360   templateRow = Application.Match(messageUid, wsTemplates.Columns(1), 0)
-370   If IsError(templateRow) Then
-380       MsgBox "Error: The Message UID '" & messageUid & "' was not found in the 'Templates' sheet.", vbCritical, "Template Error"
-390       GoTo Cleanup
-400   End If
+380   templateRow = Application.Match(messageUid, wsTemplates.Columns(1), 0)
+390   If IsError(templateRow) Then
+400       MsgBox "Error: The Message UID '" & messageUid & "' was not found in the 'Templates' sheet.", vbCritical, "Template Error"
+410       GoTo Cleanup
+420   End If
 
-410   contentSid = wsTemplates.Cells(templateRow, 2).Value
-420   If contentSid = "" Then
-430       MsgBox "Error: The ContentSid for Message UID '" & messageUid & "' is empty.", vbCritical, "Template Error"
-440       GoTo Cleanup
-450   End If
+430   contentSid = wsTemplates.Cells(templateRow, 2).Value
+440   If contentSid = "" Then
+450       MsgBox "Error: The ContentSid for Message UID '" & messageUid & "' is empty.", vbCritical, "Template Error"
+460       GoTo Cleanup
+470   End If
 
-460   For j = 1 To 15
-470       baseVariables(j) = wsTemplates.Cells(templateRow, 2 + j).Value
-480   Next j
+480   For j = 1 To 15
+490       baseVariables(j) = wsTemplates.Cells(templateRow, 5 + j).Value
+500   Next j
 
     ' --- Main Loop ---
-490   Set http = CreateObject("MSXML2.XMLHTTP")
-500   lastRow = wsContacts.Cells(wsContacts.Rows.Count, "A").End(xlUp).Row
-510   messagesSentThisSecond = 0
+510   Set http = CreateObject("MSXML2.XMLHTTP")
+520   lastRow = wsContacts.Cells(wsContacts.Rows.Count, "A").End(xlUp).Row
+530   messagesSentThisSecond = 0
 
-520   For i = 2 To lastRow
-530       If UCase(wsContacts.Cells(i, 3).Value) = "YES" Or UCase(wsContacts.Cells(i, 3).Value) = "TRUE" Then
+540   For i = 2 To lastRow
+550       If UCase(wsContacts.Cells(i, 3).Value) = "YES" Or UCase(wsContacts.Cells(i, 3).Value) = "TRUE" Then
             ' Rate Limiting
-540           If messagesSentThisSecond >= mps Then
-550               Application.Wait (Now + TimeValue("0:00:01"))
-560               messagesSentThisSecond = 0
-570           End If
+560           If messagesSentThisSecond >= mps Then
+570               Application.Wait (Now + TimeValue("0:00:01"))
+580               messagesSentThisSecond = 0
+590           End If
 
-580           Dim toName As String, toNumber As String, statusCell As Range
-590           toName = wsContacts.Cells(i, 1).Value
-600           toNumber = wsContacts.Cells(i, 2).Value
-610           Set statusCell = wsContacts.Cells(i, 4)
-620           statusCell.Value = ""
+600           Dim toName As String, toNumber As String, statusCell As Range
+610           toName = wsContacts.Cells(i, 1).Value
+620           toNumber = wsContacts.Cells(i, 2).Value
+630           Set statusCell = wsContacts.Cells(i, 4)
+640           statusCell.Value = ""
 
-630           If toNumber <> "" Then
-640               Dim resolvedVariables(1 To 15) As String, finalJson As String
-650               Dim url As String, body As String, statusText As String, responseText As String
+650           If toNumber <> "" Then
+660               Dim resolvedVariables(1 To 15) As String, finalJson As String
+670               Dim url As String, body As String, statusText As String, responseText As String
 
-                ' Two-Tiered Variable Replacement
-660               For j = 1 To 15
-670                   Dim tempVar As String
-680                   tempVar = baseVariables(j)
-690                   tempVar = Replace(tempVar, "{{name}}", toName)
-700                   For k = 1 To 15
-710                       tempVar = Replace(tempVar, "{{contact_var_" & k & "}}", wsContacts.Cells(i, 4 + k).Value)
-720                   Next k
-730                   resolvedVariables(j) = tempVar
-740               Next j
+                ' CORRECTED Two-Tiered Variable Replacement
+680               For j = 1 To 15
+690                   Dim tempVar As String
+700                   tempVar = baseVariables(j) ' Start with the base variable
+                    ' Check if the base variable itself is a placeholder for a contact variable
+710                   If Left(tempVar, 2) = "{{" And Right(tempVar, 2) = "}}" Then
+720                       If tempVar = "{{name}}" Then
+730                           tempVar = toName
+740                       Else
+750                           For k = 1 To 15
+760                               If tempVar = "{{contact_var_" & k & "}}" Then
+770                                   tempVar = wsContacts.Cells(i, 4 + k).Value
+780                                   Exit For
+790                               End If
+800                           Next k
+810                       End If
+820                   End If
+830                   resolvedVariables(j) = tempVar
+840               Next j
 
                 ' Build JSON and API Body
-750               finalJson = BuildContentVariablesJson(resolvedVariables)
-760               url = "https://api.twilio.com/2010-04-01/Accounts/" & accountSid & "/Messages.json"
-770               body = "To=" & UrlEncode("whatsapp:" & toNumber) & _
+850               finalJson = BuildContentVariablesJson(resolvedVariables)
+860               url = "https://api.twilio.com/2010-04-01/Accounts/" & accountSid & "/Messages.json"
+870               body = "To=" & UrlEncode("whatsapp:" & toNumber) & _
                       "&From=" & UrlEncode("whatsapp:" & fromNumber) & _
                       "&ContentSid=" & contentSid & _
                       "&ContentVariables=" & UrlEncode(finalJson)
 
                 ' Send Request
-780               http.Open "POST", url, False
-790               http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
-800               http.setRequestHeader "Authorization", "Basic " & Base64Encode(accountSid & ":" & authToken)
-810               http.send body
-820               messagesSentThisSecond = messagesSentThisSecond + 1
+880               http.Open "POST", url, False
+890               http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+900               http.setRequestHeader "Authorization", "Basic " & Base64Encode(accountSid & ":" & authToken)
+910               http.send body
+920               messagesSentThisSecond = messagesSentThisSecond + 1
 
                 ' Process Response
-830               If http.Status >= 200 And http.Status < 300 Then
-840                   statusText = "Success"
-850                   statusCell.Value = "Sent (" & http.Status & ")"
-860               Else
-870                   statusText = "Failed"
-880                   statusCell.Value = "Failed: " & http.Status
-890               End If
-900               responseText = http.responseText
+930               If http.Status >= 200 And http.Status < 300 Then
+940                   statusText = "Success"
+950                   statusCell.Value = "Sent (" & http.Status & ")"
+960               Else
+970                   statusText = "Failed"
+980                   statusCell.Value = "Failed: " & http.Status
+990               End If
+1000              responseText = http.responseText
 
                 ' Write to Log
-910               Dim logRow As Long
-920               logRow = wsLog.Cells(wsLog.Rows.Count, "A").End(xlUp).Row + 1
-930               wsLog.Cells(logRow, 1).Value = Now()
-940               wsLog.Cells(logRow, 2).Value = toName
-950               wsLog.Cells(logRow, 3).Value = toNumber
-960               wsLog.Cells(logRow, 4).Value = messageUid
-970               wsLog.Cells(logRow, 5).Value = statusText
-980               wsLog.Cells(logRow, 6).Value = responseText
-990           Else
-1000              statusCell.Value = "Skipped: No number"
-1010          End If
-1020      End If
-1030  Next i
+1010              Dim logRow As Long
+1020              logRow = wsLog.Cells(wsLog.Rows.Count, "A").End(xlUp).Row + 1
+1030              wsLog.Cells(logRow, 1).Value = Now()
+1040              wsLog.Cells(logRow, 2).Value = toName
+1050              wsLog.Cells(logRow, 3).Value = toNumber
+1060              wsLog.Cells(logRow, 4).Value = messageUid
+1070              wsLog.Cells(logRow, 5).Value = statusText
+1080              wsLog.Cells(logRow, 6).Value = responseText
+1090          Else
+1100              statusCell.Value = "Skipped: No number"
+1110          End If
+1120      End If
+1130  Next i
 
-1040  MsgBox "Message sending process complete. Please check the 'Log' sheet for detailed results.", vbInformation, "Process Complete"
+1140  MsgBox "Message sending process complete. Please check the 'Log' sheet for detailed results.", vbInformation, "Process Complete"
 
 Cleanup:
-1050  If Not btnSend Is Nothing Then
-1060      btnSend.OLEFormat.Object.Enabled = originalButtonState
-1070      btnSend.OLEFormat.Object.Caption = "Send Messages"
-1080  End If
-1090  Set http = Nothing
-1100  Exit Sub
+1150  If Not btnSend Is Nothing Then
+1160      btnSend.OLEFormat.Object.Enabled = originalButtonState
+1170      btnSend.OLEFormat.Object.Caption = "Send Messages"
+1180  End If
+1190  Set http = Nothing
+1200  Exit Sub
 
 ErrorHandler:
-1110  MsgBox "An unexpected error occurred: " & vbCrLf & "Error " & Err.Number & " on line " & Erl & ": " & Err.Description, vbCritical, "Runtime Error"
-1120  GoTo Cleanup
+1210  MsgBox "An unexpected error occurred: " & vbCrLf & "Error " & Err.Number & " on line " & Erl & ": " & Err.Description, vbCritical, "Runtime Error"
+1220  GoTo Cleanup
 End Sub
 
 '---------------------------------------------------------------------------------------

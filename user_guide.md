@@ -1,5 +1,5 @@
 # User Guide: Twilio WhatsApp Messenger
-*Version 2.0*
+*Version 2.6 (Final)*
 
 ## 1. Introduction
 
@@ -19,12 +19,13 @@ If you don't have a "Developer" tab in your Excel ribbon, follow these steps:
 ### Step 2.2: Import the VBA Macro
 1.  Open the `TwilioSender.xlsx` file.
 2.  Press **Alt + F11** to open the VBA Editor.
-3.  Go to `File` > `Import File...` and select the `twilio_macro.vbs` file.
+3.  Go to `File` > `Import File...` and select the **`twilio_macro_v2.6.vbs`** file.
 4.  Close the VBA Editor.
 
 ### Step 2.3: Add the "Send Messages" Button
-1.  On the **Dashboard** sheet, go to the `Developer` tab > `Insert` > `Command Button` (from ActiveX Controls).
-2.  Draw a button on the sheet.
+1.  On the **Dashboard** sheet, go to the `Developer` tab and ensure **Design Mode** is turned on.
+2.  Click the `Insert` dropdown. In the second section, labeled **ActiveX Controls**, select the **Command Button** icon.
+3.  Draw the new button on the sheet.
 3.  Right-click the button, select **Properties**, and change its **(Name)** to `btnSendMessages` and its **Caption** to `Send Messages`.
 4.  Double-click the button and, in the code window that appears, type `SendTwilioMessages` between the `Private Sub` and `End Sub` lines.
 
