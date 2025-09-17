@@ -1,87 +1,71 @@
-# User Guide: Twilio WhatsApp Messenger for Excel
+# User Guide: Twilio WhatsApp Messenger
 
 ## 1. Introduction
 
-Welcome! This tool allows you to send bulk WhatsApp messages directly from an Excel spreadsheet using your Twilio account. You can manage your contacts and message templates all within this workbook.
+Welcome! This tool allows you to send bulk, personalized WhatsApp messages directly from Excel using Twilio's official Content API for approved templates.
 
-This guide will walk you through a simple, one-time setup process to enable the messaging macro.
+This guide will walk you through setting up and using the tool, including its powerful hybrid variable system.
 
 ## 2. Initial Setup: Enabling Macros
 
-Because this workbook uses a VBA macro to send messages, you need to import the provided macro script and save the file in a macro-enabled format (`.xlsm`). This is a one-time process.
+This is a one-time process to enable the macro that powers the tool.
 
-### Step 2.1: Enable the Developer Tab in Excel
-
+### Step 2.1: Enable the Developer Tab
 If you don't have a "Developer" tab in your Excel ribbon, follow these steps:
 1.  Go to `File` > `Options` > `Customize Ribbon`.
-2.  In the right-hand list under "Main Tabs", check the box for **Developer**.
-3.  Click **OK**.
+2.  In the right-hand list, check the box for **Developer**. Click **OK**.
 
-### Step 2.2: Import the VBA Macro Script
-
+### Step 2.2: Import the VBA Macro
 1.  Open the `TwilioSender.xlsx` file.
-2.  Press **Alt + F11** to open the VBA Editor. (Or go to the `Developer` tab and click `Visual Basic`).
-3.  In the VBA Editor, go to `File` > `Import File...`.
-4.  Navigate to and select the `twilio_macro.vbs` file that was provided alongside this workbook. Click **Open**.
-5.  You should now see `Module1` under the "Modules" folder in the "Project - VBAProject" window on the left. You can double-click it to see the imported code.
-6.  Close the VBA Editor by clicking the 'X' or pressing **Alt + F11** again.
+2.  Press **Alt + F11** to open the VBA Editor.
+3.  Go to `File` > `Import File...` and select the `twilio_macro.vbs` file.
+4.  Close the VBA Editor.
 
 ### Step 2.3: Add the "Send Messages" Button
+1.  On the **Dashboard** sheet, go to the `Developer` tab > `Insert` > `Command Button` (from ActiveX Controls).
+2.  Draw a button on the sheet.
+3.  Right-click the button, select **Properties**, and change its **(Name)** to `btnSendMessages` and its **Caption** to `Send Messages`.
+4.  Double-click the button and, in the code window that appears, type `SendTwilioMessages` between the `Private Sub` and `End Sub` lines.
 
-1.  Go to the **Dashboard** sheet.
-2.  Go to the `Developer` tab in the Excel ribbon.
-3.  Click `Insert`, and under "ActiveX Controls", select the **Command Button**.
-4.  Your cursor will turn into a crosshair. Draw a button in the "Button Placeholder" area on the Dashboard.
-5.  Right-click the new button and select **Properties**.
-6.  In the Properties window:
-    *   Change the **(Name)** to `btnSendMessages`.
-    *   Change the **Caption** to `Send Messages`.
-7.  Close the Properties window.
-8.  Double-click the button to open the VBA editor again. It will show a new private sub for the button click.
-9.  Inside that sub, type `SendTwilioMessages` on the line between `Private Sub...` and `End Sub`. It should look like this:
-    ```vba
-    Private Sub btnSendMessages_Click()
-        SendTwilioMessages
-    End Sub
-    ```
-10. Close the VBA editor. Make sure you are out of "Design Mode" by clicking the `Design Mode` icon on the Developer tab (it should not be highlighted).
-
-### Step 2.4: Save as a Macro-Enabled Workbook
-
+### Step 2.4: Save as Macro-Enabled Workbook
 1.  Go to `File` > `Save As`.
-2.  Choose a location for the file.
-3.  In the "Save as type" dropdown, select **Excel Macro-Enabled Workbook (*.xlsm)**.
-4.  Click **Save**. You can now close the original `.xlsx` file and use your new `.xlsm` file from now on.
+2.  Change the "Save as type" to **Excel Macro-Enabled Workbook (*.xlsm)**.
+3.  Save the file. You will use this new `.xlsm` file from now on.
 
-**Your setup is now complete!**
+**Setup is now complete!**
 
-## 3. How to Use the Messenger
+## 3. How It Works: The Hybrid Variable System
 
-### Step 3.1: Configure Your Settings
-1.  Go to the **Settings** sheet.
-2.  Enter your Twilio Account SID, Auth Token, and your Twilio "From" WhatsApp number in the corresponding cells.
-    *Note: The sheet is password-protected ('twilio') to prevent accidental changes, but the value cells are editable.*
+This tool uses a powerful two-tiered variable system:
+- **Base Variables:** These are defined once per message template in the `Templates` sheet. They are useful for content that is the same for every contact receiving that message (e.g., an offer detail, a campaign name).
+- **Contact Variables:** These are defined for each person in the `Contacts` sheet. They are used for personalization (e.g., names, appointment times, specific product details).
 
-### Step 3.2: Add Your Contacts
-1.  Go to the **Contacts** sheet.
-2.  Enter the `Name` and `WhatsApp Number` for each recipient.
-3.  In the `Send?` column, select "Yes" from the dropdown for each contact you want to message.
-4.  Use the columns `Variable {{1}}` through `Variable {{15}}` to hold the data you want to insert into your message templates.
+The magic is that you can **use Contact Variables inside Base Variables**.
 
-### Step 3.3: Manage Your Templates
+## 4. Step-by-Step Usage
+
+### Step 4.1: Configure Settings
+- Go to the **Settings** sheet and enter your Twilio Account SID, Auth Token, and your Twilio "From" WhatsApp number.
+
+### Step 4.2: Define Your Message Templates
 1.  Go to the **Templates** sheet.
-2.  You can edit the sample templates or add new ones. Make sure each template has a unique **Message UID**.
-3.  You can use up to 15 numbered placeholders (`{{1}}`, `{{2}}`, etc.) which will be replaced with data from the corresponding `Variable` columns in the `Contacts` sheet.
-4.  You can also use a special placeholder, `{{name}}`, which will be automatically replaced with the recipient's name from the `Name` column.
+2.  For each pre-approved Twilio template you want to use:
+    *   **Message UID:** Give it a short, memorable name (e.g., `PROMO_01`).
+    *   **ContentSid:** Paste the official Template SID from your Twilio account (e.g., `HX...`).
+    *   **Base Variable {{1}} - {{15}}:** Fill in the values for the placeholders in your Twilio template.
+        *   **Example:** If Base Variable `{{2}}` is for a greeting, you could enter `Hello {{name}}! Check out this offer.` Here, `{{name}}` is a placeholder that will be filled in from the `Contacts` sheet.
 
-### Step 3.4: Send the Messages
-1.  Go to the **Dashboard** sheet.
-2.  In the first yellow box (cell `C5`), enter the **Message UID** of the template you want to send.
-3.  In the second yellow box (cell `C6`), enter your desired **Messages Per Second (MPS)** rate. This controls how fast messages are sent to comply with API limits. A value of `1` is a safe starting point.
+### Step 4.3: Add Your Contacts
+1.  Go to the **Contacts** sheet.
+2.  For each recipient, fill in their `Name` and `WhatsApp Number`.
+3.  Set `Send?` to "Yes" for everyone you want to message.
+4.  **Contact Variable {{1}} - {{15}}:** Fill in any data that is unique to this contact. This data can be used in the templates, as seen in the example above.
+
+### Step 4.4: Send Your Campaign
+1.  Go to the **Dashboard**.
+2.  Enter the **Message UID** you want to send in cell `C5`.
+3.  Set your desired **Messages Per Second (MPS)** rate in cell `C6` (e.g., `1`).
 4.  Click the **Send Messages** button.
-5.  The button will be disabled and read "Sending...". Please wait until the process is complete.
-6.  A confirmation message will appear once all messages have been sent.
 
-### Step 3.5: Check the Log
-1.  After sending, go to the **Log** sheet.
-2.  Here you will find a detailed record for every message that was attempted, including a timestamp, the contact it was sent to, the status (Success/Failed), and the full response from Twilio for debugging.
+### Step 4.5: Review the Log
+- After sending, go to the **Log** sheet to see a detailed record of every message sent, including the timestamp and success/failure status.

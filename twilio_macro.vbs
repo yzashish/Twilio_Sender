@@ -1,231 +1,242 @@
-' VBA Macro for sending Twilio WhatsApp Messages
+' VBA Macro for sending Twilio WhatsApp Messages (Hybrid-Variable Version)
 
-' Main Subroutine to be assigned to the button
+'---------------------------------------------------------------------------------------
+' Procedure : SendTwilioMessages
+' Author    : Jules
+' Date      : 2025-09-17
+' Purpose   : Main subroutine to send messages using Twilio's Content API.
+'             Supports a hybrid variable model and rate-limiting.
+'---------------------------------------------------------------------------------------
 Public Sub SendTwilioMessages()
-    On Error GoTo ErrorHandler
+10    On Error GoTo ErrorHandler
 
-    Dim wsDashboard As Worksheet
-    Dim wsContacts As Worksheet
-    Dim wsTemplates As Worksheet
-    Dim wsSettings As Worksheet
-    Dim wsLog As Worksheet
-
-    Dim btnSend As Object
-    Dim originalButtonState As Boolean
+20    Dim wsDashboard As Worksheet, wsContacts As Worksheet, wsTemplates As Worksheet, wsSettings As Worksheet, wsLog As Worksheet
+30    Dim btnSend As Object, originalButtonState As Boolean
+40    Dim accountSid As String, authToken As String, fromNumber As String
+50    Dim messageUid As String, contentSid As String, mps As Long
+60    Dim templateRow As Variant, baseVariables(1 To 15) As String
+70    Dim http As Object
+80    Dim lastRow As Long, i As Long, j As Long
+90    Dim messagesSentThisSecond As Long
 
     ' --- Configuration ---
-    Set wsDashboard = ThisWorkbook.Sheets("Dashboard")
-    Set wsContacts = ThisWorkbook.Sheets("Contacts")
-    Set wsTemplates = ThisWorkbook.Sheets("Templates")
-    Set wsSettings = ThisWorkbook.Sheets("Settings")
-    Set wsLog = ThisWorkbook.Sheets("Log")
+100   Set wsDashboard = ThisWorkbook.Sheets("Dashboard")
+110   Set wsContacts = ThisWorkbook.Sheets("Contacts")
+120   Set wsTemplates = ThisWorkbook.Sheets("Templates")
+130   Set wsSettings = ThisWorkbook.Sheets("Settings")
+140   Set wsLog = ThisWorkbook.Sheets("Log")
 
-    ' Get the send button from the Dashboard to disable it
-    On Error Resume Next
-    Set btnSend = wsDashboard.Shapes("btnSendMessages")
-    If Not btnSend Is Nothing Then
-        originalButtonState = btnSend.OLEFormat.Object.Enabled
-        btnSend.OLEFormat.Object.Enabled = False
-        btnSend.OLEFormat.Object.Caption = "Sending..."
-    End If
-    On Error GoTo ErrorHandler ' Re-enable default error handling
+    ' --- Disable Button ---
+150   On Error Resume Next
+160   Set btnSend = wsDashboard.Shapes("btnSendMessages")
+170   If Not btnSend Is Nothing Then
+180       originalButtonState = btnSend.OLEFormat.Object.Enabled
+190       btnSend.OLEFormat.Object.Enabled = False
+200       btnSend.OLEFormat.Object.Caption = "Sending..."
+210   End If
+220   On Error GoTo ErrorHandler
 
-    ' --- Read Settings ---
-    Dim accountSid As String
-    Dim authToken As String
-    Dim fromNumber As String
+    ' --- Read Settings & Inputs ---
+230   accountSid = wsSettings.Range("B2").Value
+240   authToken = wsSettings.Range("B3").Value
+250   fromNumber = wsSettings.Range("B4").Value
+260   messageUid = wsDashboard.Range("C5").Value
 
-    accountSid = wsSettings.Range("B1").Value
-    authToken = wsSettings.Range("B2").Value
-    fromNumber = wsSettings.Range("B3").Value
+270   If Not IsNumeric(wsDashboard.Range("C6").Value) Then
+280       MsgBox "Error: 'Messages Per Second (MPS)' must be a valid number.", vbCritical, "Config Error"
+290       GoTo Cleanup
+300   End If
+310   mps = wsDashboard.Range("C6").Value
 
-    If accountSid = "" Or authToken = "" Or fromNumber = "" Then
-        MsgBox "Error: Please provide Account SID, Auth Token, and Twilio 'From' number in the 'Settings' sheet.", vbCritical, "Configuration Error"
-        GoTo Cleanup
-    End If
+    ' --- Input Validation ---
+320   If accountSid = "" Or authToken = "" Or fromNumber = "" Or messageUid = "" Or mps <= 0 Then
+330       MsgBox "Error: Please ensure all settings and inputs on the Dashboard and Settings sheets are filled in correctly.", vbCritical, "Config Error"
+340       GoTo Cleanup
+350   End If
 
-    ' --- Read Selected Template & MPS Setting ---
-    Dim messageUid As String
-    Dim messageTemplate As String
-    Dim templateRow As Variant
-    Dim mps As Long
-    Dim messagesSentThisSecond As Long
+    ' --- Find Template and Get Base Variables ---
+360   templateRow = Application.Match(messageUid, wsTemplates.Columns(1), 0)
+370   If IsError(templateRow) Then
+380       MsgBox "Error: The Message UID '" & messageUid & "' was not found in the 'Templates' sheet.", vbCritical, "Template Error"
+390       GoTo Cleanup
+400   End If
 
-    ' The user specifies the Message UID in a dedicated cell on the 'Dashboard'.
-    messageUid = wsDashboard.Range("C5").Value
-    mps = wsDashboard.Range("C6").Value
+410   contentSid = wsTemplates.Cells(templateRow, 2).Value
+420   If contentSid = "" Then
+430       MsgBox "Error: The ContentSid for Message UID '" & messageUid & "' is empty.", vbCritical, "Template Error"
+440       GoTo Cleanup
+450   End If
 
-    If messageUid = "" Then
-        MsgBox "Error: Please specify a Message UID in cell C5 on the 'Dashboard' sheet.", vbCritical, "Template Error"
-        GoTo Cleanup
-    End If
+460   For j = 1 To 15
+470       baseVariables(j) = wsTemplates.Cells(templateRow, 2 + j).Value
+480   Next j
 
-    If mps <= 0 Then
-        MsgBox "Error: 'Messages Per Second (MPS)' must be a positive number. Please check cell C6 on the 'Dashboard' sheet.", vbCritical, "Configuration Error"
-        GoTo Cleanup
-    End If
+    ' --- Main Loop ---
+490   Set http = CreateObject("MSXML2.XMLHTTP")
+500   lastRow = wsContacts.Cells(wsContacts.Rows.Count, "A").End(xlUp).Row
+510   messagesSentThisSecond = 0
 
-    ' Find the row number of the matching UID in the Templates sheet (Column A)
-    templateRow = Application.Match(messageUid, wsTemplates.Columns(1), 0)
+520   For i = 2 To lastRow
+530       If UCase(wsContacts.Cells(i, 3).Value) = "YES" Or UCase(wsContacts.Cells(i, 3).Value) = "TRUE" Then
+            ' Rate Limiting
+540           If messagesSentThisSecond >= mps Then
+550               Application.Wait (Now + TimeValue("0:00:01"))
+560               messagesSentThisSecond = 0
+570           End If
 
-    ' Check if a match was found
-    If IsError(templateRow) Then
-        MsgBox "Error: The Message UID '" & messageUid & "' was not found in the 'Templates' sheet.", vbCritical, "Template Error"
-        GoTo Cleanup
-    Else
-        ' Get the template content from Column B of the found row
-        messageTemplate = wsTemplates.Cells(templateRow, 2).Value
-    End If
+580           Dim toName As String, toNumber As String, statusCell As Range
+590           toName = wsContacts.Cells(i, 1).Value
+600           toNumber = wsContacts.Cells(i, 2).Value
+610           Set statusCell = wsContacts.Cells(i, 4)
+620           statusCell.Value = ""
 
-    If messageTemplate = "" Then
-        MsgBox "Error: The found template for UID '" & messageUid & "' is empty.", vbCritical, "Template Error"
-        GoTo Cleanup
-    End If
+630           If toNumber <> "" Then
+640               Dim resolvedVariables(1 To 15) As String, finalJson As String
+650               Dim url As String, body As String, statusText As String, responseText As String
 
-    ' --- Create HTTP Object ---
-    Dim http As Object
-    Set http = CreateObject("MSXML2.XMLHTTP")
+                ' Two-Tiered Variable Replacement
+660               For j = 1 To 15
+670                   Dim tempVar As String
+680                   tempVar = baseVariables(j)
+690                   tempVar = Replace(tempVar, "{{name}}", toName)
+700                   For k = 1 To 15
+710                       tempVar = Replace(tempVar, "{{contact_var_" & k & "}}", wsContacts.Cells(i, 4 + k).Value)
+720                   Next k
+730                   resolvedVariables(j) = tempVar
+740               Next j
 
-    ' --- Loop Through Contacts ---
-    Dim lastRow As Long
+                ' Build JSON and API Body
+750               finalJson = BuildContentVariablesJson(resolvedVariables)
+760               url = "https://api.twilio.com/2010-04-01/Accounts/" & accountSid & "/Messages.json"
+770               body = "To=" & UrlEncode("whatsapp:" & toNumber) & _
+                      "&From=" & UrlEncode("whatsapp:" & fromNumber) & _
+                      "&ContentSid=" & contentSid & _
+                      "&ContentVariables=" & UrlEncode(finalJson)
+
+                ' Send Request
+780               http.Open "POST", url, False
+790               http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+800               http.setRequestHeader "Authorization", "Basic " & Base64Encode(accountSid & ":" & authToken)
+810               http.send body
+820               messagesSentThisSecond = messagesSentThisSecond + 1
+
+                ' Process Response
+830               If http.Status >= 200 And http.Status < 300 Then
+840                   statusText = "Success"
+850                   statusCell.Value = "Sent (" & http.Status & ")"
+860               Else
+870                   statusText = "Failed"
+880                   statusCell.Value = "Failed: " & http.Status
+890               End If
+900               responseText = http.responseText
+
+                ' Write to Log
+910               Dim logRow As Long
+920               logRow = wsLog.Cells(wsLog.Rows.Count, "A").End(xlUp).Row + 1
+930               wsLog.Cells(logRow, 1).Value = Now()
+940               wsLog.Cells(logRow, 2).Value = toName
+950               wsLog.Cells(logRow, 3).Value = toNumber
+960               wsLog.Cells(logRow, 4).Value = messageUid
+970               wsLog.Cells(logRow, 5).Value = statusText
+980               wsLog.Cells(logRow, 6).Value = responseText
+990           Else
+1000              statusCell.Value = "Skipped: No number"
+1010          End If
+1020      End If
+1030  Next i
+
+1040  MsgBox "Message sending process complete. Please check the 'Log' sheet for detailed results.", vbInformation, "Process Complete"
+
+Cleanup:
+1050  If Not btnSend Is Nothing Then
+1060      btnSend.OLEFormat.Object.Enabled = originalButtonState
+1070      btnSend.OLEFormat.Object.Caption = "Send Messages"
+1080  End If
+1090  Set http = Nothing
+1100  Exit Sub
+
+ErrorHandler:
+1110  MsgBox "An unexpected error occurred: " & vbCrLf & "Error " & Err.Number & " on line " & Erl & ": " & Err.Description, vbCritical, "Runtime Error"
+1120  GoTo Cleanup
+End Sub
+
+'---------------------------------------------------------------------------------------
+' Procedure : BuildContentVariablesJson
+' Author    : Jules
+' Date      : 2025-09-17
+' Purpose   : Builds a JSON string for Twilio's ContentVariables parameter.
+'---------------------------------------------------------------------------------------
+Private Function BuildContentVariablesJson(vars() As String) As String
+    Dim jsonBuilder As String
     Dim i As Long
-    Dim j As Long
-    Dim toName As String
-    Dim toNumber As String
-    Dim sendFlag As String
-    Dim statusCell As Range
-    Dim logRow As Long
+    jsonBuilder = "{"
 
-    lastRow = wsContacts.Cells(wsContacts.Rows.Count, "A").End(xlUp).Row
-    messagesSentThisSecond = 0
-
-    For i = 2 To lastRow
-        sendFlag = UCase(wsContacts.Cells(i, 3).Value)
-
-        If sendFlag = "YES" Or sendFlag = "TRUE" Then
-            ' --- Rate Limiting ---
-            If messagesSentThisSecond >= mps Then
-                Application.Wait (Now + TimeValue("0:00:01"))
-                messagesSentThisSecond = 0
+    For i = 1 To UBound(vars)
+        If vars(i) <> "" Then
+            If Len(jsonBuilder) > 1 Then
+                jsonBuilder = jsonBuilder & ","
             End If
-
-            toName = wsContacts.Cells(i, 1).Value
-            toNumber = wsContacts.Cells(i, 2).Value
-            Set statusCell = wsContacts.Cells(i, 4)
-            statusCell.Value = "" ' Clear previous status
-
-            If toNumber <> "" Then
-                ' --- Prepare API Request ---
-                Dim url As String
-                Dim body As String
-                Dim finalMessage As String
-                Dim statusText As String
-                Dim responseText As String
-
-                ' --- Placeholder Replacement ---
-                finalMessage = messageTemplate
-                ' Special replacement for {{name}}
-                finalMessage = Replace(finalMessage, "{{name}}", toName)
-                ' Loop for numbered placeholders {{1}} to {{15}}
-                For j = 1 To 15
-                    finalMessage = Replace(finalMessage, "{{" & j & "}}", wsContacts.Cells(i, 4 + j).Value)
-                Next j
-
-                ' --- API Call ---
-                url = "https://api.twilio.com/2010-04-01/Accounts/" & accountSid & "/Messages.json"
-                body = "To=" & UrlEncode("whatsapp:" & toNumber) & _
-                       "&From=" & UrlEncode("whatsapp:" & fromNumber) & _
-                       "&Body=" & UrlEncode(finalMessage)
-
-                http.Open "POST", url, False
-                http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
-                http.setRequestHeader "Authorization", "Basic " & Base64Encode(accountSid & ":" & authToken)
-                http.send body
-
-                messagesSentThisSecond = messagesSentThisSecond + 1
-
-                ' --- Process Response ---
-                If http.Status >= 200 And http.Status < 300 Then
-                    statusText = "Success"
-                    statusCell.Value = "Sent (" & http.Status & ")"
-                    statusCell.Font.Color = RGB(0, 128, 0) ' Green
-                Else
-                    statusText = "Failed"
-                    statusCell.Value = "Failed: " & http.Status
-                    statusCell.Font.Color = RGB(255, 0, 0) ' Red
-                End If
-                responseText = http.responseText
-
-                ' --- Write to Log Sheet ---
-                logRow = wsLog.Cells(wsLog.Rows.Count, "A").End(xlUp).Row + 1
-                wsLog.Cells(logRow, 1).Value = Now() ' Timestamp
-                wsLog.Cells(logRow, 2).Value = toName
-                wsLog.Cells(logRow, 3).Value = toNumber
-                wsLog.Cells(logRow, 4).Value = messageUid
-                wsLog.Cells(logRow, 5).Value = statusText
-                wsLog.Cells(logRow, 6).Value = responseText
-
-            Else
-                statusCell.Value = "Skipped: No number"
-            End If
+            jsonBuilder = jsonBuilder & """" & i & """:""" & JsonEncode(vars(i)) & """"
         End If
     Next i
 
-    MsgBox "Message sending process complete. Please check the 'Status' column in the 'Contacts' sheet for details.", vbInformation, "Process Complete"
+    jsonBuilder = jsonBuilder & "}"
+    BuildContentVariablesJson = jsonBuilder
+End Function
 
-Cleanup:
-    ' Re-enable the button
-    If Not btnSend Is Nothing Then
-        btnSend.OLEFormat.Object.Enabled = originalButtonState
-        btnSend.OLEFormat.Object.Caption = "Send Messages"
-    End If
-    Set http = Nothing
-    Exit Sub
+'---------------------------------------------------------------------------------------
+' Procedure : JsonEncode
+' Author    : Jules
+' Date      : 2025-09-17
+' Purpose   : Escapes characters for safe inclusion in a JSON string.
+'---------------------------------------------------------------------------------------
+Private Function JsonEncode(str As String) As String
+    str = Replace(str, "\", "\\")
+    str = Replace(str, """", "\""")
+    str = Replace(str, vbCrLf, "\n")
+    str = Replace(str, vbLf, "\n")
+    str = Replace(str, vbCr, "\n")
+    str = Replace(str, vbTab, "\t")
+    JsonEncode = str
+End Function
 
-ErrorHandler:
-    MsgBox "An unexpected error occurred: " & vbCrLf & "Error " & Err.Number & ": " & Err.Description, vbCritical, "Runtime Error"
-    GoTo Cleanup
-End Sub
-
-
-' --- Helper Functions ---
-
+'---------------------------------------------------------------------------------------
+' Procedure : UrlEncode
+' Author    : Jules
+' Date      : 2025-09-17
+' Purpose   : A simplified URL Encoder.
+'---------------------------------------------------------------------------------------
 Private Function UrlEncode(str As String) As String
-    ' A simplified URL Encoder
-    Dim i As Long
-    Dim tempStr As String
-    Dim char As String
-
+    Dim i As Long, tempStr As String, char As String
     For i = 1 To Len(str)
         char = Mid(str, i, 1)
         Select Case char
-            Case "a" To "z", "A" To "Z", "0" To "9", "-", "_", "."
+            Case "a" To "z", "A" To "Z", "0" To "9", "-", "_", ".", "~"
                 tempStr = tempStr & char
             Case " "
                 tempStr = tempStr & "+"
             Case Else
-                tempStr = tempStr & "%" & Hex(Asc(char))
+                tempStr = tempStr & "%" & Right("0" & Hex(Asc(char)), 2)
         End Select
     Next i
     UrlEncode = tempStr
 End Function
 
+'---------------------------------------------------------------------------------------
+' Procedure : Base64Encode
+' Author    : Jules
+' Date      : 2025-09-17
+' Purpose   : Base64 encodes a string using MSXML2.
+'---------------------------------------------------------------------------------------
 Private Function Base64Encode(str As String) As String
-    ' Base64 encodes a string using MSXML2
     Dim arrData() As Byte
     arrData = StrConv(str, vbFromUnicode)
-
-    Dim objXML As Object
-    Dim objNode As Object
-
+    Dim objXML As Object, objNode As Object
     Set objXML = CreateObject("MSXML2.DOMDocument")
     Set objNode = objXML.createElement("b64")
-
     objNode.DataType = "bin.base64"
     objNode.nodeTypedValue = arrData
-
     Base64Encode = objNode.text
-
     Set objNode = Nothing
     Set objXML = Nothing
 End Function
